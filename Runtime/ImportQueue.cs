@@ -114,6 +114,12 @@ namespace MazinGames.GoogleSheetsDatabase
                 await Task.Delay(100);
             }
 
+            if (request.IsFaulted && request.Exception != null)
+            {
+                Debug.LogError(request.Exception.Message);
+                return;
+            }
+
             var rawTable = Regex.Split(request.Result, "\r\n|\r|\n");
             request.Dispose();
 
