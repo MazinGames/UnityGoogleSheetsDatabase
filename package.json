@@ -1,17 +1,17 @@
 {
-  "name": "com.norska-lib.unity-google-sheets-database",
+  "name": "com.mazingames.unity_google_sheets_database",
   "version": "0.1.1",
-  "displayName": "Unity GoogleSheets Database",
+  "displayName": "UnityGoogleSheetsDatabase",
   "description": "Unity Editor tool, which helps design game-logic database (such as characters, weapons, items stats etc.) using Google Spreadsheets.",
-  "unity": "2019.1",
+  "unity": "6000.2",
   "keywords": [
     "google",
     "spreadsheet",
     "database"
   ],
   "author": {
-    "name": "Norska Games",
-    "email": "norskagames@gmail.com"
+    "name": "Mazin Games",
+    "email": "james.studd@live.co.uk"
   },
   "type": "tool"
 }

@@ -1,141 +1,156 @@
 using System;
-using System.Linq;
 using System.Collections.Generic;
-using UnityEngine;
+using System.Linq;
+using System.Reflection;
 using UnityEditor;
-using NorskaLib.GoogleSheetsDatabase;
+using UnityEngine;
 
-[CustomEditor(typeof(DataContainerBase), true)]
-public class DataContainerCE : Editor
+namespace MazinGames.GoogleSheetsDatabase.Editor
 {
-    bool foldout = true;
-    Dictionary<string, bool> pagesToggles;
-
-    ImportQueue importQueue;
-
-    public override void OnInspectorGUI()
+    [CustomEditor(typeof(DataContainerBase), true)]
+    public class DataContainerCe : UnityEditor.Editor
     {
-        var container = (DataContainerBase)target;
+        private bool _foldout = true;
+        private Dictionary<string, bool> _pagesToggles;
 
-        foldout = EditorGUILayout.BeginFoldoutHeaderGroup(foldout, "Import settings");   
-        if (foldout)
-            DrawGUI(container);
-        EditorGUILayout.EndFoldoutHeaderGroup();
+        private ImportQueue _importQueue;
 
-        EditorGUILayout.Space(16);
-
-        base.OnInspectorGUI();
-    }
-
-    void DrawGUI(DataContainerBase container)
-    {
-        var listsInfos = container.GetType().GetFields()
-            .Where(fi => Attribute.IsDefined(fi, typeof(PageNameAttribute)))
-            .OrderBy(i => i.Name).ToArray();
-
-        if (pagesToggles == null)
+        public override void OnInspectorGUI()
         {
-            pagesToggles = new Dictionary<string, bool>();
-            for (int i = 0; i < listsInfos.Length; i++)
-                pagesToggles.Add(listsInfos[i].Name, EditorPrefs.GetBool(listsInfos[i].Name));
-        }
+            var container = (DataContainerBase)target;
 
-        EditorGUILayout.BeginVertical("box");
-
-        #region Draw doc ID field
-
-        container.documentID = EditorGUILayout.TextField(
-            new GUIContent(
-                "Document Id",
-                "The XXXX part in 'https://docs.google.com/spreadsheets/d/XXXX/edit' URL. NOTE: The document must be accessable by link."), 
-            container.documentID);
-
-        #endregion
-
-        #region Draw controll buttons
-
-        EditorGUILayout.BeginHorizontal();
-
-        if (GUILayout.Button("All"))
-            SelectAll(true);
-
-        if (GUILayout.Button("None"))
-            SelectAll(false);
-
-        if (GUILayout.Button("Import"))
-        {
-            if (pagesToggles.Any(t => t.Value == true))
+            _foldout = EditorGUILayout.BeginFoldoutHeaderGroup(_foldout, "Import settings");
+            if (_foldout)
             {
-                if (string.IsNullOrEmpty(container.documentID))
-                {
-                    Debug.LogError($"Document ID is not specified!");
-                    return;
-                }
-
-                EditorUtility.DisplayProgressBar("Downloading definitions", "Initializing...", 0);
-
-                importQueue = new ImportQueue(container, listsInfos.Where(i => pagesToggles[i.Name] == true).ToArray());
-
-                importQueue.onComplete += OnImportQueueComplete;
-                importQueue.onOutputChanged += OnOutputChanged;
-                importQueue.onProgressChanged += OnProgressChanged;
-
-                importQueue.Run();
+                DrawGUI(container);
             }
-            else
-                Debug.LogWarning("Nothing is selected to import");
+            
+            EditorGUILayout.EndFoldoutHeaderGroup();
+            EditorGUILayout.Space(16);
+
+            base.OnInspectorGUI();
         }
 
-        EditorGUILayout.EndHorizontal();
-
-        #endregion
-
-        #region Draw import flags
-
-        EditorGUILayout.LabelField("Pages to import:");
-
-        EditorGUI.indentLevel += 1;
-
-        var keys = new List<string>(pagesToggles.Keys);
-        foreach (var key in keys)
+        private void DrawGUI(DataContainerBase container)
         {
-            pagesToggles[key] = EditorGUILayout.Toggle($"{key}", pagesToggles[key]);
-            EditorPrefs.SetBool(key, pagesToggles[key]);
+            var listsInfos = container.GetType().GetFields()
+                .Where(fi => Attribute.IsDefined(fi, typeof(PageNameAttribute)))
+                .OrderBy(i => i.Name).ToArray();
+
+            if (_pagesToggles == null)
+            {
+                _pagesToggles = new Dictionary<string, bool>();
+                foreach (var info in listsInfos)
+                {
+                    _pagesToggles.Add(info.Name, EditorPrefs.GetBool(info.Name));
+                }
+            }
+
+            EditorGUILayout.BeginVertical("box");
+
+            #region Draw doc ID field
+
+            container._documentID = EditorGUILayout.TextField(
+                new GUIContent(
+                    "Document Id",
+                    "The XXXX part in 'https://docs.google.com/spreadsheets/d/XXXX/edit' URL. NOTE: The document must be accessable by link."),
+                container._documentID);
+
+            #endregion
+
+            #region Draw controll buttons
+
+            EditorGUILayout.BeginHorizontal();
+
+            if (GUILayout.Button("All"))
+            {
+                SelectAll(true);
+            }
+
+            if (GUILayout.Button("None"))
+            {
+                SelectAll(false);
+            }
+
+            if (GUILayout.Button("Import"))
+            {
+                if (_pagesToggles.Any(t => t.Value == true))
+                {
+                    if (string.IsNullOrEmpty(container._documentID))
+                    {
+                        Debug.LogError($"Document ID is not specified!");
+                        return;
+                    }
+
+                    EditorUtility.DisplayProgressBar("Downloading definitions", "Initializing...", 0);
+
+                    _importQueue = new ImportQueue(container, listsInfos.Where(i => _pagesToggles[i.Name] == true).ToArray());
+
+                    _importQueue.onComplete += OnImportQueueComplete;
+                    _importQueue.onOutputChanged += OnOutputChanged;
+                    _importQueue.onProgressChanged += OnProgressChanged;
+
+                    _importQueue.Run();
+                }
+                else
+                {
+                    Debug.LogWarning("Nothing is selected to import");
+                }
+            }
+
+            EditorGUILayout.EndHorizontal();
+
+            #endregion
+
+            #region Draw import flags
+
+            EditorGUILayout.LabelField("Pages to import:");
+
+            EditorGUI.indentLevel += 1;
+
+            var keys = new List<string>(_pagesToggles.Keys);
+            foreach (var key in keys)
+            {
+                _pagesToggles[key] = EditorGUILayout.Toggle($"{key}", _pagesToggles[key]);
+                EditorPrefs.SetBool(key, _pagesToggles[key]);
+            }
+
+            EditorGUI.indentLevel -= 1;
+
+            #endregion
+
+            EditorGUILayout.EndVertical();
         }
 
-        EditorGUI.indentLevel -= 1;
+        private void SelectAll(bool mode)
+        {
+            var keys = new List<string>(_pagesToggles.Keys);
+            foreach (var key in keys)
+            {
+                _pagesToggles[key] = mode;
+            }
+        }
 
-        #endregion
+        private void OnProgressChanged()
+        {
+            EditorUtility.DisplayProgressBar("Downloading definitions", _importQueue.Output, _importQueue.Progress);
+        }
 
-        EditorGUILayout.EndVertical();
-    }
+        private void OnOutputChanged()
+        {
+            EditorUtility.DisplayProgressBar("Downloading definitions", _importQueue.Output, _importQueue.Progress);
+        }
 
-    void SelectAll(bool mode)
-    {
-        var keys = new List<string>(pagesToggles.Keys);
-        foreach (var key in keys)
-            pagesToggles[key] = mode;
-    }
+        private void OnImportQueueComplete(DataContainerBase container)
+        {
+            EditorUtility.SetDirty(container);
 
-    void OnProgressChanged()
-    {
-        EditorUtility.DisplayProgressBar("Downloading definitions", importQueue.Output, importQueue.Progress);
-    }
+            EditorUtility.ClearProgressBar();
 
-    void OnOutputChanged()
-    {
-        EditorUtility.DisplayProgressBar("Downloading definitions", importQueue.Output, importQueue.Progress);
-    }
-
-    void OnImportQueueComplete(DataContainerBase container)
-    {
-        EditorUtility.SetDirty(container);
-
-        EditorUtility.ClearProgressBar();
-
-        importQueue.onComplete -= OnImportQueueComplete;
-        importQueue.onOutputChanged -= OnOutputChanged;
-        importQueue.onProgressChanged -= OnProgressChanged;
-        importQueue = null;
+            _importQueue.onComplete -= OnImportQueueComplete;
+            _importQueue.onOutputChanged -= OnOutputChanged;
+            _importQueue.onProgressChanged -= OnProgressChanged;
+            _importQueue = null;
+        }
     }
 }

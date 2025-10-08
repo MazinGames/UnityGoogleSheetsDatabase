@@ -1,14 +1,14 @@
 using System;
 
-namespace NorskaLib.GoogleSheetsDatabase
+namespace MazinGames.GoogleSheetsDatabase
 {
-	public class PageNameAttribute : Attribute
-	{
-		public readonly string name;
+    public class PageNameAttribute : Attribute
+    {
+        public readonly string Name;
 
-		public PageNameAttribute(string name)
-		{
-			this.name = name;
-		}
-	}
+        public PageNameAttribute(string name)
+        {
+            Name = name;
+        }
+    }
 }

@@ -1,11 +1,9 @@
-using System.Collections.Generic;
 using UnityEngine;
 
-namespace NorskaLib.GoogleSheetsDatabase
+namespace MazinGames.GoogleSheetsDatabase
 {
     public abstract class DataContainerBase : ScriptableObject
     {
-        [SerializeField] [HideInInspector]
-        public string documentID;
+        [SerializeField] [HideInInspector] public string _documentID;
     }
 }

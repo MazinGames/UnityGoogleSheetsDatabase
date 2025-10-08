@@ -1,8 +1,12 @@
 {
-    "name": "NorskaLib",
-    "rootNamespace": "NorskaLib.GoogleSheetsDatabase",
-    "references": [],
-    "includePlatforms": [],
+    "name": "MazinGames.Editor",
+    "rootNamespace": "MazinGames.GoogleSheetsDatabase",
+    "references": [
+        "MazinGames"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
     "excludePlatforms": [],
     "allowUnsafeCode": false,
     "overrideReferences": false,
