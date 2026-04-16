@@ -1,25 +1,39 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Globalization;
 using UnityEngine;
 
-namespace NorskaLib.GoogleSheetsDatabase.Utils
+namespace MazinGames.GoogleSheetsDatabase
 {
     public static class Utilities
     {
+        public static readonly string[] TrueOptions =
+        {
+            "true", "yes"
+        };
+
+        private static readonly string[] FalseOptions =
+        {
+            "false", "no"
+        };
+
         public static string[] Split(string line)
         {
-            bool isInsideQuotes = false;
-            List<string> result = new List<string>();
+            var isInsideQuotes = false;
+            var result = new List<string>();
 
-            string temp = string.Empty;
-            for (int i = 0; i < line.Length; i++)
+            var temp = string.Empty;
+            for (var i = 0; i < line.Length; i++)
+            {
                 if (line[i] == '"')
                 {
                     isInsideQuotes = !isInsideQuotes;
 
                     if (i == line.Length - 1)
+                    {
                         result.Add(temp);
+                    }
                 }
                 else
                 {
@@ -29,8 +43,11 @@ namespace NorskaLib.GoogleSheetsDatabase.Utils
                         temp = string.Empty;
                     }
                     else
+                    {
                         temp += line[i];
+                    }
                 }
+            }
 
             return result.ToArray();
         }
@@ -39,30 +56,43 @@ namespace NorskaLib.GoogleSheetsDatabase.Utils
         {
             return Parse(s, type, out var error);
         }
-        public static object Parse(string s, Type type, out bool error)
+
+        private static object Parse(string s, Type type, out bool error)
         {
             error = false;
 
             if (type == typeof(string))
+            {
                 return s;
+            }
 
             if (type == typeof(int))
+            {
                 return ParseInt(s, out error);
+            }
 
             if (type == typeof(float))
+            {
                 return ParseFloat(s, out error);
+            }
 
             if (type == typeof(bool))
+            {
                 return ParseBool(s, out error);
+            }
 
             if (type == typeof(List<int>))
+            {
                 return ParseList(s, out error);
-            
+            }
+
             if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(List<>))
             {
                 var elementType = type.GetGenericArguments()[0];
                 if (elementType.IsEnum)
+                {
                     return ParseEnumList(s, elementType, out error);
+                }
             }
 
             if (type.IsEnum)
@@ -74,13 +104,14 @@ namespace NorskaLib.GoogleSheetsDatabase.Utils
                 }
                 catch (ArgumentException)
                 {
-                    result = default(object);
+                    result = default;
                     error = false;
                 }
+
                 return result;
             }
 
-            return default(object);
+            return default;
         }
 
         private static object ParseEnumList(string s, Type enumType, out bool error)
@@ -89,7 +120,7 @@ namespace NorskaLib.GoogleSheetsDatabase.Utils
 
             var items = s.Split(',');
             var listType = typeof(List<>).MakeGenericType(enumType);
-            var list = (System.Collections.IList)Activator.CreateInstance(listType);
+            var list = (IList)Activator.CreateInstance(listType);
 
             foreach (var item in items)
             {
@@ -117,47 +148,44 @@ namespace NorskaLib.GoogleSheetsDatabase.Utils
 
             return list;
         }
-        
-        public static int ParseInt(string s, out bool error)
+
+        private static int ParseInt(string s, out bool error)
         {
             error = !int.TryParse(s, out var result);
 
             if (error)
+            {
                 Debug.LogWarning($"Error at parsing '{s}' to Integer");
+            }
 
             return error
                 ? 0
                 : result;
         }
 
-        public static readonly string[] TrueOptions
-            = new string[]
-            {
-                "true", "yes"
-            };
-        public static readonly string[] FalseOptions
-            = new string[]
-            {
-                "false", "no"
-            };
-        public static bool ParseBool(string s, out bool error)
+        private static bool ParseBool(string s, out bool error)
         {
             s = s.ToLower();
             error = false;
 
-            for (int i = 0; i < TrueOptions.Length; i++)
+            for (var i = 0; i < TrueOptions.Length; i++)
             {
                 if (s == TrueOptions[i])
+                {
                     return true;
+                }
+
                 if (s == FalseOptions[i])
+                {
                     return false;
+                }
             }
 
             error = true;
             return false;
         }
 
-        public static float ParseFloat(string s, out bool error)
+        private static float ParseFloat(string s, out bool error)
         {
             error = !float.TryParse(
                 s.Replace(',', '.'),
@@ -167,15 +195,14 @@ namespace NorskaLib.GoogleSheetsDatabase.Utils
             return result;
         }
 
-        public static List<int> ParseList(string s, out bool error)
+        private static List<int> ParseList(string s, out bool error)
         {
             var list = new List<int>();
             var stringArray = s.Split(',');
             error = false;
 
             foreach (var value in stringArray)
-            {
-                if (int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out int result))
+                if (int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var result))
                 {
                     list.Add(result);
                 }
@@ -183,7 +210,6 @@ namespace NorskaLib.GoogleSheetsDatabase.Utils
                 {
                     error = true;
                 }
-            }
 
             return list;
         }

@@ -1,29 +1,33 @@
 ﻿using System;
-using System.Linq;
-using System.Reflection;
-using System.Net;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
+using System.Net;
+using System.Reflection;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using UnityEngine;
-using System.Text.RegularExpressions;
 
-using NorskaLib.GoogleSheetsDatabase.Utils;
-namespace NorskaLib.GoogleSheetsDatabase
+namespace MazinGames.GoogleSheetsDatabase
 {
     public class ImportQueue
     {
-        public const string URLFormat = @"https://docs.google.com/spreadsheets/d/{0}/gviz/tq?tqx=out:csv&sheet={1}";
+        private const string URLFormat = @"https://docs.google.com/spreadsheets/d/{0}/gviz/tq?tqx=out:csv&sheet={1}";
 
         private readonly DataContainerBase container;
-        private readonly FieldInfo[] listsInfos;
         private readonly string documentID;
-
-        public Action<DataContainerBase> onComplete;
+        private readonly FieldInfo[] listsInfos;
 
         public bool abort;
 
+        public Action<DataContainerBase> onComplete;
+        public Action onOutputChanged;
+        public Action onProgressChanged;
+
         private string output;
+
+        public float progress;
+
         public string Output
         {
             get => output;
@@ -34,9 +38,7 @@ namespace NorskaLib.GoogleSheetsDatabase
                 onOutputChanged.Invoke();
             }
         }
-        public Action onOutputChanged;
 
-        public float progress;
         public float Progress
         {
             get => progress;
@@ -47,7 +49,6 @@ namespace NorskaLib.GoogleSheetsDatabase
                 onProgressChanged.Invoke();
             }
         }
-        public Action onProgressChanged;
 
         private float ProgressElementDelta
             => 1f / listsInfos.Length;
@@ -56,7 +57,7 @@ namespace NorskaLib.GoogleSheetsDatabase
         {
             this.container = container;
             this.listsInfos = listsInfos;
-            this.documentID = container.documentID;
+            documentID = container._documentID;
         }
 
         public async void Run()
@@ -64,8 +65,10 @@ namespace NorskaLib.GoogleSheetsDatabase
             abort = false;
             var webClient = new WebClient();
 
-            for (int i = 0; i < listsInfos.Length && !abort; i++)
+            for (var i = 0; i < listsInfos.Length && !abort; i++)
+            {
                 await PopulateList(container, listsInfos[i], webClient);
+            }
 
             webClient.Dispose();
 
@@ -74,9 +77,9 @@ namespace NorskaLib.GoogleSheetsDatabase
 
         private async Task PopulateList(DataContainerBase container, FieldInfo fieldInfo, WebClient webClient)
         {
-            Type fieldType = fieldInfo.FieldType;
-            bool isList = typeof(IList).IsAssignableFrom(fieldType);
-            Type contentType = isList
+            var fieldType = fieldInfo.FieldType;
+            var isList = typeof(IList).IsAssignableFrom(fieldType);
+            var contentType = isList
                 ? fieldType.GetGenericArguments().SingleOrDefault()
                 : fieldType;
 
@@ -89,7 +92,7 @@ namespace NorskaLib.GoogleSheetsDatabase
             #region Downloading page
 
             var googleSheetRef = (PageNameAttribute)Attribute.GetCustomAttribute(fieldInfo, typeof(PageNameAttribute));
-            var pagename = googleSheetRef.name;
+            var pagename = googleSheetRef.Name;
 
             Output = $"Downloading page '{pagename}'...";
             var url = string.Format(URLFormat, documentID, pagename);
@@ -107,7 +110,15 @@ namespace NorskaLib.GoogleSheetsDatabase
             }
 
             while (!request.IsCompleted)
+            {
                 await Task.Delay(100);
+            }
+
+            if (request.IsFaulted && request.Exception != null)
+            {
+                Debug.LogError(request.Exception.Message);
+                return;
+            }
 
             var rawTable = Regex.Split(request.Result, "\r\n|\r|\n");
             request.Dispose();
@@ -118,7 +129,7 @@ namespace NorskaLib.GoogleSheetsDatabase
 
             #region Analyzing and splitting raw text
 
-            Output = $"Analysing headers...";
+            Output = "Analysing headers...";
 
             var headersRaw = Utilities.Split(rawTable[0]);
 
@@ -126,7 +137,7 @@ namespace NorskaLib.GoogleSheetsDatabase
             var headers = new List<string>();
             var emptyHeadersIdxs = new List<int>();
 
-            for (int i = 0; i < headersRaw.Length; i++)
+            for (var i = 0; i < headersRaw.Length; i++)
             {
                 if (string.IsNullOrEmpty(headersRaw[i]))
                 {
@@ -135,17 +146,21 @@ namespace NorskaLib.GoogleSheetsDatabase
                 }
 
                 if (idHeaderIdx == -1 && headersRaw[i].ToLower() == "id")
+                {
                     idHeaderIdx = i;
+                }
 
                 headers.Add(headersRaw[i]);
             }
 
             var rows = new List<string[]>();
-            for (int i = 1; i < rawTable.Length; i++)
+            for (var i = 1; i < rawTable.Length; i++)
             {
                 var substrings = Utilities.Split(rawTable[i]);
                 if (idHeaderIdx != -1 && string.IsNullOrEmpty(substrings[idHeaderIdx]))
+                {
                     continue;
+                }
 
                 rows.Add(substrings.Where((val, index) => !emptyHeadersIdxs.Contains(index)).ToArray());
             }
@@ -161,7 +176,10 @@ namespace NorskaLib.GoogleSheetsDatabase
             var headersToFields = new Dictionary<string, FieldInfo>();
             foreach (var h in headers)
             {
-                if (h.StartsWith("_")) continue;
+                if (h.StartsWith("_"))
+                {
+                    continue;
+                }
 
                 var field = contentType.GetField(h, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
                 if (field == null)
@@ -169,6 +187,7 @@ namespace NorskaLib.GoogleSheetsDatabase
                     Debug.LogWarning($"Header '{h}' match no field in {contentType.Name} type");
                     continue;
                 }
+
                 headersToFields.Add(h, field);
             }
 
@@ -179,7 +198,7 @@ namespace NorskaLib.GoogleSheetsDatabase
                 {
                     var item = Activator.CreateInstance(contentType);
 
-                    for (int i = 0; i < headers.Count; i++)
+                    for (var i = 0; i < headers.Count; i++)
                     {
                         if (headersToFields.TryGetValue(headers[i], out var field))
                         {
@@ -204,7 +223,7 @@ namespace NorskaLib.GoogleSheetsDatabase
                 var item = Activator.CreateInstance(contentType);
                 var row = rows[0];
 
-                for (int i = 0; i < headers.Count; i++)
+                for (var i = 0; i < headers.Count; i++)
                 {
                     if (headersToFields.TryGetValue(headers[i], out var field))
                     {
@@ -219,6 +238,7 @@ namespace NorskaLib.GoogleSheetsDatabase
             Progress += 1 / 3f * ProgressElementDelta;
 
             #endregion
+
         }
     }
 }
