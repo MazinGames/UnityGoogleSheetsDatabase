@@ -1,6 +1,6 @@
 {
   "name": "com.mazingames.unity_google_sheets_database",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "displayName": "UnityGoogleSheetsDatabase",
   "description": "Unity Editor tool, which helps design game-logic database (such as characters, weapons, items stats etc.) using Google Spreadsheets.",
   "unity": "6000.2",

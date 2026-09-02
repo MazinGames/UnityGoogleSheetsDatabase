@@ -76,6 +76,11 @@ namespace MazinGames.GoogleSheetsDatabase
                 return ParseFloat(s, out error);
             }
 
+            if (type == typeof(double))
+            {
+                return ParseDouble(s, out error);
+            }
+
             if (type == typeof(bool))
             {
                 return ParseBool(s, out error);
@@ -188,6 +193,16 @@ namespace MazinGames.GoogleSheetsDatabase
         private static float ParseFloat(string s, out bool error)
         {
             error = !float.TryParse(
+                s.Replace(',', '.'),
+                NumberStyles.Float,
+                CultureInfo.InvariantCulture,
+                out var result);
+            return result;
+        }
+
+        private static double ParseDouble(string s, out bool error)
+        {
+            error = !double.TryParse(
                 s.Replace(',', '.'),
                 NumberStyles.Float,
                 CultureInfo.InvariantCulture,
