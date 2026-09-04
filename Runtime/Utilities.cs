@@ -88,9 +88,31 @@ namespace MazinGames.GoogleSheetsDatabase
 
             if (type == typeof(List<int>))
             {
-                return ParseList(s, out error);
+                return ParseList(s, value =>
+                {
+                    var result = ParseInt(value, out var error);
+                    return (result, error);
+                }, out error);
             }
 
+            if (type == typeof(List<float>))
+            {
+                return ParseList(s, value =>
+                {
+                    var result = ParseFloat(value, out var error);
+                    return (result, error);
+                }, out error);
+            }
+
+            if (type == typeof(List<double>))
+            {
+                return ParseList(s, value =>
+                {
+                    var result = ParseDouble(value, out var error);
+                    return (result, error);
+                }, out error);
+            }
+            
             if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(List<>))
             {
                 var elementType = type.GetGenericArguments()[0];
@@ -209,22 +231,26 @@ namespace MazinGames.GoogleSheetsDatabase
                 out var result);
             return result;
         }
-
-        private static List<int> ParseList(string s, out bool error)
+        
+        private static List<T> ParseList<T>(string s, Func<string, (T value, bool error)> parser, out bool error)
         {
-            var list = new List<int>();
+            var list = new List<T>();
             var stringArray = s.Split(',');
             error = false;
 
             foreach (var value in stringArray)
-                if (int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var result))
-                {
-                    list.Add(result);
-                }
-                else
+            {
+                var (result, itemError) = parser(value.Trim());
+
+                if (itemError)
                 {
                     error = true;
                 }
+                else
+                {
+                    list.Add(result);
+                }
+            }
 
             return list;
         }
